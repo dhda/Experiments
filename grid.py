@@ -3,6 +3,7 @@
 from __future__ import division
 
 import pyglet
+from pyglet import gl
 
 
 fps = pyglet.clock.ClockDisplay()
@@ -45,10 +46,7 @@ class GridWindow(pyglet.window.Window):
 
 			z = max(0, z-2*dt)
 
-			self.quads.colors[12*i : 12*i+12] = [self.box_color[0]-z, self.box_color[1]-z, self.box_color[2],
-			                                     self.box_color[0]-z, self.box_color[1]-z, self.box_color[2],
-			                                     self.box_color[0]-z, self.box_color[1]-z, self.box_color[2],
-			                                     self.box_color[0]-z, self.box_color[1]-z, self.box_color[2]]
+			self.quads.colors[12*i : 12*i+12] = [self.box_color[0]-z, self.box_color[1]-z, self.box_color[2]]*4
 
 			if z <= 0:
 				del self.animating[i]
@@ -80,11 +78,11 @@ class GridWindow(pyglet.window.Window):
 		for r in xrange(y_boxes+1):
 			i = r
 			self.lines.vertices[6*i : 6*i+6] = [0.0,r*self.box_h,0.0, x_boxes*self.box_w,r*self.box_h,0.0]
-			self.lines.colors[6*i : 6*i+6] = [self.line_color[t%3] for t in range(6)]
+			self.lines.colors[6*i : 6*i+6] = [self.line_color[0], self.line_color[1], self.line_color[2]]*2
 		for c in xrange(x_boxes+1):
 			i = c + y_boxes + 1
 			self.lines.vertices[6*i : 6*i+6] = [c*self.box_w,0.0,0.0, c*self.box_w,y_boxes*self.box_h,0.0]
-			self.lines.colors[6*i : 6*i+6] = [self.line_color[t%3] for t in range(6)]
+			self.lines.colors[6*i : 6*i+6] = [self.line_color[0], self.line_color[1], self.line_color[2]]*2
 
 		for i in xrange(n_boxes):
 			c = i %  x_boxes
@@ -96,19 +94,25 @@ class GridWindow(pyglet.window.Window):
 			                                       c*self.box_w,     (r+1)*self.box_h, 0]
 
 			self.quads.colors[12*i : 12*i+12] = [self.box_color[t%3] for t in range(12)]
-
-			#self.quads.colors[12*i : 12*i+12] = [r*c/n_boxes, c/x_boxes/2, r/y_boxes/2,
-			#                                 r*c/n_boxes, c/x_boxes/2, r/y_boxes/2,
-			#                                 r*c/n_boxes, c/x_boxes/2, r/y_boxes/2,
-			#                                 r*c/n_boxes, c/x_boxes/2, r/y_boxes/2] 
+			self.quads.colors[12*i : 12*i+12] = [self.box_color[0], self.box_color[1], self.box_color[2]]*4
 
 
 	def on_draw(self):
 		self.clear()
+		gl.glPushMatrix()
+		gl.glTranslatef(0.5,0.5,0.0)
 
 		self.quads.draw(pyglet.gl.GL_QUADS)
+
+		"""
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+		glEnable(GL_BLEND)
+		glEnable(GL_LINE_SMOOTH);
+		glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+		"""
 		self.lines.draw(pyglet.gl.GL_LINES)
 
+		gl.glPopMatrix()
 		fps.draw()
 
 
