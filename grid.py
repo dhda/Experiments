@@ -2,8 +2,9 @@
 
 from __future__ import division
 
+import math
 import pyglet
-from pyglet import gl
+from pyglet.gl import *
 
 
 fps = pyglet.clock.ClockDisplay()
@@ -12,18 +13,21 @@ class GridWindow(pyglet.window.Window):
 		super(GridWindow, self).__init__(*args, **kwargs)
 
 		self.box_color  = (0.9, 0.9, 0.9)
-		self.line_color = (0.8, 0.8, 0.8)
+		self.line_color = (0.7, 0.7, 0.7)
 
 		self.box_w = 20
 		self.box_h = 20
-		self.n_boxes = 0
+		self.n_boxes = 1
 
-		self.quads = pyglet.graphics.vertex_list(1, 'v3f', 'c3f')
-		self.lines = pyglet.graphics.vertex_list(1, 'v3f', 'c3f')
+		self.top = 0
+
+		self.batch = pyglet.graphics.Batch()
+		self.quads = self.batch.add(1, pyglet.gl.GL_QUADS, None, 'v3f', 'c3f')
+		self.lines = self.batch.add(1, pyglet.gl.GL_LINES, None, 'v3f', 'c3f')
 
 		self.animating = dict()
 
-		pyglet.clock.schedule_interval(self.animate, 1/60)
+		pyglet.clock.schedule_interval(self.animate, 1.0/120.0)
 
 
 	def on_mouse_motion(self, x, y, dx, dy):
@@ -34,29 +38,65 @@ class GridWindow(pyglet.window.Window):
 
 		i = c + r*self.x_boxes
 
-		self.animating[i] = 0.6
+		self.top += 1
+		self.animating[i] = [1.0, self.top]
 
 
 	def animate(self, dt):
 		for i in self.animating.keys():
-			z = self.animating[i]
+			p = max(0, self.animating[i][0])
+			if p != 0:
+				d = self.animating[i][1] / self.top
+			else:
+				d = 0
 
 			c = i %  self.x_boxes
 			r = i // self.x_boxes
 
-			z = max(0, z-2*dt)
+			e = p**3
+			z = max(0, self.box_w/2.0 * e)
+			cl = max(0, 0.7 * e);
 
-			self.quads.colors[12*i : 12*i+12] = [self.box_color[0]-z, self.box_color[1]-z, self.box_color[2]]*4
+			self.quads.colors[12*i : 12*i+12] = [self.box_color[0]*(1.0-cl), self.box_color[1]*(1.0-cl), self.box_color[2]]*4
+			self.quads.vertices[12*i : 12*i+12] = [c*self.box_w-z,     r*self.box_h-z,     d,
+			                                       (c+1)*self.box_w+z, r*self.box_h-z,     d,
+			                                       (c+1)*self.box_w+z, (r+1)*self.box_h+z, d,
+			                                       c*self.box_w-z,     (r+1)*self.box_h+z, d]
+			
+			self.lines.colors[24*i : 24*i+24] = [self.line_color[0]*(1.0-e), self.line_color[1]*(1.0-e), self.line_color[2]]*8
 
-			if z <= 0:
+			self.lines.vertices[24*i    : 24*i+3]  = self.quads.vertices[12*i   : 12*i+3]
+			self.lines.vertices[24*i+3  : 24*i+6]  = self.quads.vertices[12*i+3 : 12*i+6]
+                                                                                         
+			self.lines.vertices[24*i+6  : 24*i+9]  = self.quads.vertices[12*i+3 : 12*i+6]
+			self.lines.vertices[24*i+9  : 24*i+12] = self.quads.vertices[12*i+6 : 12*i+9]
+                                                                                         
+			self.lines.vertices[24*i+12 : 24*i+15] = self.quads.vertices[12*i+6 : 12*i+9]
+			self.lines.vertices[24*i+15 : 24*i+18] = self.quads.vertices[12*i+9 : 12*i+12]
+                                                                                         
+			self.lines.vertices[24*i+18 : 24*i+21] = self.quads.vertices[12*i+9 : 12*i+12]
+			self.lines.vertices[24*i+21 : 24*i+24] = self.quads.vertices[12*i   : 12*i+3]
+
+			if p == 0:
 				del self.animating[i]
 				pass
 			else:
-				self.animating[i] = z
+				self.animating[i][0] = p - 2.5*dt
+
+		if len(self.animating) == 0:
+			self.top = 0
 
 
 	def on_resize(self, width, height):
-		super(GridWindow, self).on_resize(width, height)
+		#super(GridWindow, self).on_resize(width, height)
+		glViewport(0, 0, width, height)
+		glMatrixMode(GL_PROJECTION)
+		glLoadIdentity()
+		glOrtho(0, width, 0, height, -1.0, 2.0)
+		glMatrixMode(GL_MODELVIEW)
+
+		glEnable(GL_DEPTH_TEST)
+		glDepthFunc(GL_LESS)
 
 		x_boxes = max(1, width  // self.box_w) + 1
 		y_boxes = max(1, height // self.box_h) + 1
@@ -73,49 +113,70 @@ class GridWindow(pyglet.window.Window):
 		self.animating = dict()
 
 		self.quads.resize(4 * n_boxes)
-		self.lines.resize(2*(x_boxes + y_boxes + 2))
-
-		for r in xrange(y_boxes+1):
-			i = r
-			self.lines.vertices[6*i : 6*i+6] = [0.0,r*self.box_h,0.0, x_boxes*self.box_w,r*self.box_h,0.0]
-			self.lines.colors[6*i : 6*i+6] = [self.line_color[0], self.line_color[1], self.line_color[2]]*2
-		for c in xrange(x_boxes+1):
-			i = c + y_boxes + 1
-			self.lines.vertices[6*i : 6*i+6] = [c*self.box_w,0.0,0.0, c*self.box_w,y_boxes*self.box_h,0.0]
-			self.lines.colors[6*i : 6*i+6] = [self.line_color[0], self.line_color[1], self.line_color[2]]*2
+		self.lines.resize(8 * n_boxes)
 
 		for i in xrange(n_boxes):
 			c = i %  x_boxes
 			r = i // x_boxes
 
-			self.quads.vertices[12*i : 12*i+12] = [c*self.box_w,     r*self.box_h,     0,
-			                                       (c+1)*self.box_w, r*self.box_h,     0,
-			                                       (c+1)*self.box_w, (r+1)*self.box_h, 0,
-			                                       c*self.box_w,     (r+1)*self.box_h, 0]
+			self.quads.vertices[12*i : 12*i+12] = [c*self.box_w,     r*self.box_h,     0.0,
+			                                       (c+1)*self.box_w, r*self.box_h,     0.0,
+			                                       (c+1)*self.box_w, (r+1)*self.box_h, 0.0,
+			                                       c*self.box_w,     (r+1)*self.box_h, 0.0]
 
-			self.quads.colors[12*i : 12*i+12] = [self.box_color[t%3] for t in range(12)]
+			self.lines.vertices[24*i    : 24*i+3]  = self.quads.vertices[12*i   : 12*i+3]
+			self.lines.vertices[24*i+3  : 24*i+6]  = self.quads.vertices[12*i+3 : 12*i+6]
+                                                                                         
+			self.lines.vertices[24*i+6  : 24*i+9]  = self.quads.vertices[12*i+3 : 12*i+6]
+			self.lines.vertices[24*i+9  : 24*i+12] = self.quads.vertices[12*i+6 : 12*i+9]
+                                                                                         
+			self.lines.vertices[24*i+12 : 24*i+15] = self.quads.vertices[12*i+6 : 12*i+9]
+			self.lines.vertices[24*i+15 : 24*i+18] = self.quads.vertices[12*i+9 : 12*i+12]
+                                                                                         
+			self.lines.vertices[24*i+18 : 24*i+21] = self.quads.vertices[12*i+9 : 12*i+12]
+			self.lines.vertices[24*i+21 : 24*i+24] = self.quads.vertices[12*i   : 12*i+3]
+
+
 			self.quads.colors[12*i : 12*i+12] = [self.box_color[0], self.box_color[1], self.box_color[2]]*4
+			self.lines.colors[24*i : 24*i+24] = [self.line_color[0], self.line_color[1], self.line_color[2]]*8
 
 
 	def on_draw(self):
 		self.clear()
-		gl.glPushMatrix()
-		gl.glTranslatef(0.5,0.5,0.0)
-
-		self.quads.draw(pyglet.gl.GL_QUADS)
 
 		"""
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-		glEnable(GL_BLEND)
-		glEnable(GL_LINE_SMOOTH);
-		glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
-		"""
-		self.lines.draw(pyglet.gl.GL_LINES)
+		w,h = self.get_size()
+		aspect = w/h
+		fov = 80.0
+		near = 1.0
+		far = 1000.0
+		bt = math.tan(math.radians(fov/2.0))
+		lr = bt * aspect
 
-		gl.glPopMatrix()
+		glMatrixMode(GL_PROJECTION)
+		glLoadIdentity()
+		glFrustum(-lr*near, lr*near, -bt*near, bt*near, near, far)
+
+		glMatrixMode(GL_MODELVIEW)
+		glLoadIdentity()
+		#glTranslatef(-w/2.0+0.5, -h/2.0+0.5, -h/bt/2.0)
+		"""
+
+		glPushMatrix()
+		glTranslatef(0.5, 0.5, 0.0)
+
+		glEnable(GL_MULTISAMPLE_ARB)
+
+		self.batch.draw()
+
+		glPopMatrix()
+
+		glDisable(GL_DEPTH_TEST)
 		fps.draw()
+		glEnable(GL_DEPTH_TEST)
 
 
 if __name__ == '__main__':
-	window = GridWindow(resizable=True)
+	config = pyglet.gl.Config(depth_size=24, double_buffer=True, sample_buffers=1, samples=4)
+	window = GridWindow(config=config, resizable=True)
 	pyglet.app.run()
