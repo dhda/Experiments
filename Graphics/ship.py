@@ -52,11 +52,14 @@ class GridWindow(pyglet.window.Window):
 
 		cx = w / 2
 		cy = h / 2
-		ang = math.atan2(self.target[1] - cy, self.target[0] - cx)
 
 		rot = time.time()
 		ship   = triVerts(cx, cy, 0.0, 100, rot)
-		turret = triVerts(ship[0], ship[1], 0.1, 30, ang)
+
+		tx = ship[0]
+		ty = ship[1]
+		ang = math.atan2(self.target[1] - ty, self.target[0] - tx)
+		turret = triVerts(tx, ty, 0.1, 30, ang)
 
 		pyglet.graphics.draw(6, GL_TRIANGLES, ('v3f', ship + turret), ('c3f', (1.0,1.0,1.0)*3 + (0.8,0.3,0.3)*3))
 
