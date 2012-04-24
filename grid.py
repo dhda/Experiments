@@ -39,7 +39,7 @@ class GridWindow(pyglet.window.Window):
 		i = c + r*self.x_boxes
 
 		self.top += 1
-		self.animating[i] = [1.0, self.top]
+		self.animating[i] = [1.0, self.top, dx, dy]
 
 
 	def animate(self, dt):
@@ -55,15 +55,16 @@ class GridWindow(pyglet.window.Window):
 
 			e = p**3
 			z = max(0, self.box_w/2.0 * e)
-			cl = max(0, 0.7 * e);
 
-			self.quads.colors[12*i : 12*i+12] = [self.box_color[0]*(1.0-cl), self.box_color[1]*(1.0-cl), self.box_color[2]]*4
+			cr = cg = min(1.0, e / self.box_w * math.sqrt(self.animating[i][2]**2 + self.animating[i][3]**2))
+
+			self.quads.colors[12*i : 12*i+12] = [self.box_color[0]*(1.0-cr), self.box_color[1]*(1.0-cg), self.box_color[2]]*4
 			self.quads.vertices[12*i : 12*i+12] = [c*self.box_w-z,     r*self.box_h-z,     d,
 			                                       (c+1)*self.box_w+z, r*self.box_h-z,     d,
 			                                       (c+1)*self.box_w+z, (r+1)*self.box_h+z, d,
 			                                       c*self.box_w-z,     (r+1)*self.box_h+z, d]
 			
-			self.lines.colors[24*i : 24*i+24] = [self.line_color[0]*(1.0-e), self.line_color[1]*(1.0-e), self.line_color[2]]*8
+			self.lines.colors[24*i : 24*i+24] = [self.line_color[0]*(1.0-0.3*e), self.line_color[1]*(1.0-0.3*e), self.line_color[2]*(1.0-0.3*e)]*8
 
 			self.lines.vertices[24*i    : 24*i+3]  = self.quads.vertices[12*i   : 12*i+3]
 			self.lines.vertices[24*i+3  : 24*i+6]  = self.quads.vertices[12*i+3 : 12*i+6]
